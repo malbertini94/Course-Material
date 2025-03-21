@@ -1,0 +1,135 @@
+---
+title: "Domanda Aggregata di Latte"
+author: "Mattia Albertini"
+date: "3/14/2025"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Descrizione
+
+Questo R-Studio Script carica e genera le domande individuali di latte riportate dagli studenti durante la lezione di Microeconomia A. Calcoliamo poi la domanda aggregata e la rappresentiamo graficamente.
+
+Nota Bene:
+Questo è un ambiente dinamico di R chiamoto "R markdown". Permette di includere blocchi di testo, equazioni, e code chunk come questo, 
+
+```{r echo=FALSE}
+print("hello world")
+```
+nello stesso documento. 
+
+## Set Up 
+
+Prima installiamo i pacchetti: estensioni di R che scarichiamo dal web che forniscono funzionalità aggiuntive, come per esempio la funzione per importare i dati da Excel ad R.
+
+Prima installa i paccketti togliendo "#" dal comando install.packages("package_name"). Poi compila le libraries (attiva i pacchetti richiesti).
+
+```{r pacchetti, warning=FALSE, include=TRUE}
+# Installa
+#install.packages("tidyverse")
+#install.packages("magrittr")
+#install.packages("readxl")
+#install.packages("cowplot")
+
+# Attiva
+library(tidyverse)  
+library(magrittr)   
+library(readxl)  # to upload from excel
+library(cowplot) # to combine plots
+```
+
+Ora dobbiamo imporre una "directory" ovvero i luogo in cui tutti gli input e gli output di questa sessione di R andranno a finire. 
+
+Senza entrare troppo nel dettaglio, dobbiamo rimpiazzare la scritta verde dentro "wd" con la directory dove tieni i tuoi dati.Per rovarla seleziona i dati dal tuo pc, clicca su "Ottieni Informazioni" (Mac) oppure "Propietà" (Windows) e copia ed incolla quello che c'è scritto alla voce "Situato in" (Mac) oppure "Location" (Windows).
+
+```{r directories}
+wd <- '/Users/mattiaalbertini/Library/CloudStorage/OneDrive-USI/Microeconomia A/Slides_Mattia/2025/04_Milk_demand/2025' 
+
+setwd(wd)
+```
+
+Infine, carichiamo i dati usando la funzione read_excel dal pacchetto readxl, 
+
+```{r data}
+milk <- read_excel("Domanda.xlsx", sheet = 1)
+```
+
+I dati dovrebbero essere alla tua destra alla voce "Data".
+
+## Domande Individuali
+
+Diamo una occhiata ai dati che abbiamo caricato, 
+
+```{r dataset, echo=FALSE}
+head(milk)
+```
+
+La prima colonna è quella dei prezzi, le altre colonne sono le vostre quantità che avete riportato per ogni livello di prezzo. 
+
+Possiamo vedere quale correlazione c'è tra le domande individuali e i prezzi: per esempio tra il prezzo e la domanda numero 10 abbiamo,
+
+```{r stats}
+cor(milk$P, milk$Q5)
+```
+
+ovviamente una correlazione negativa. 
+
+Ora grafichiamo alcune domande individuali. Per semplicità ne ho scelte io 4 interessanti, ma potete cambiare alla voce geom_line() di ogni domanda individuale il valore di x=Q_n, per esempio se volestre graficare la domanda $10$ sostituite per esempio scrivete nella prima al posto di x=Q_4 un x=Q_10.
+
+```{r grafici}
+milk1 <- ggplot(data=milk)   +     # Individual demand 1
+  geom_line(aes(y = P, x= Q18))  +
+  ylim(0, 7) +
+  labs(x = "Quantity", y = "Price") +
+  ggtitle("Individual Demand 1") + theme_classic()
+
+milk2 <- ggplot(data=milk)   +    # Individual demand 2
+  geom_line(aes(y = P, x= Q10))  +
+  ylim(0, 7) +
+  labs(x = "Quantity", y = "Price") +
+  ggtitle("Individual Demand 2")  + theme_classic()
+
+milk3 <- ggplot(data=milk)   +    # Individual demand 3
+  geom_line(aes(y = P, x= Q35))  +
+  ylim(0, 7) +
+  labs(x = "Quantity", y = "Price") +
+  ggtitle("Individual Demand 3")  + theme_classic()
+
+milk4 <- ggplot(data=milk)   +    # Individual demand 4
+  geom_line(aes(y = P, x= Q50))  +
+  ylim(0, 7) +
+  labs(x = "Quantity", y = "Price") +
+  ggtitle("Individual Demand 4") + theme_classic()
+
+plot_grid(milk1, milk2, milk3, milk4, labels = "AUTO") # Combine demands
+```
+
+E' interessante che una delle domande sia inelastica no? Vi ricordate cosa vi avevo detto? Che per le rette orizzontali e verticali rappresentano assenza di correlazione tra la $x$ e la $y$, ed ineffetti, 
+
+```{r stats 2, warning=FALSE}
+cor(milk$P, milk$Q18)
+```
+Dove $NA$ vuol dire che il valore è 0. Figo no?
+
+## Domanda Aggregata
+
+Ora vogliamo calcolare la domanda aggregata. Ricordate come si fa? Somme orizzontali per ogni livello di prezzo... In pratica dobbiamo aggiungere al nostro dataset una colonna Q_tot in cui su ogni riga abbiamo la somma di tutte le quantità domandate individualmente per ogni livello di prezzo.
+
+```{r compute agg_d, warning=FALSE}
+milk$Q_tot <- rowSums(milk[,2:38])
+data.frame(prezzo = milk$P, Q_tot = milk$Q_tot)
+```
+
+Questa è la nostra domanda aggregata. Ora possiamo rappresentarla,
+
+```{r agg_d, warning=FALSE}
+agg_milk <- ggplot(data=milk) +   # Aggregated Demand (On 48 people)
+  geom_line(aes(y = P, x= Q_tot))  + 
+  ylim(0, 7) +
+  labs(x = "Quantity", y = "Price") +
+  ggtitle("Aggregated Demand") + theme_classic()
+agg_milk
+```
+
+Ed ecco qui la nostra bella domanda aggregata!!

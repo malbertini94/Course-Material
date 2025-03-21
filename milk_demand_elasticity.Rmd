@@ -1,0 +1,220 @@
+---
+title: "Elasticità Domanda di Latte"
+author: "Mattia Albertini"
+date: "25/15/2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## Descrizione
+
+Questo R-Studio Script calcola l'elasticità della domanda aggregata di latte e dei rispettivi ricavi. Utilizzeremo lo stesso dataset dell'ultima volta, quindi prima calcoliamo la domanda aggregata, poi i ricavi ed infine le elasticità della domanda e dei ricavi. 
+
+## Set Up 
+
+Come al soluto prima installiamo i pacchetti che ci interessano.
+
+Prima installa i paccketti togliendo "#" dal comando install.packages("package_name"). Poi compila (schiaccia freccina verde) le libraries (attiva i pacchetti richiesti). Se li hai già installati, non farlo di nuovo sono già in memoria, installa solamente i pacchetti che non hai già. 
+
+Le libraries vanno compilate (o in gergo "runnate", ovvero schiaccia il tastino verde) in ogni caso perché "attivano" i pacchetti.
+
+```{r pacchetti, message=FALSE, warning=FALSE}
+# Installa
+#install.packages("tidyverse")
+#install.packages("magrittr")
+#install.packages("readxl")
+#install.packages("cowplot")
+#install.packages("plot3D")
+
+# Attiva
+library(tidyverse)  
+library(magrittr)   
+library(readxl)  # to upload from excel
+library(cowplot) # to combine plots
+library(plot3D)  # to graph 3D 
+```
+
+Settate la directory come l'ultima volta (la location della cartella dove avete i dati):
+
+```{r directories, warnings=FALSE}
+wd <- '/Users/mattiaalbertini/Library/CloudStorage/OneDrive-USI/Microeconomia A/Slides_Mattia/2024' 
+setwd(wd)
+```
+
+Infine, carichiamo i dati, 
+
+```{r data}
+milk <- read_excel("Domanda.xlsx", sheet = 1)
+```
+
+I dati dovrebbero essere alla tua destra alla voce "Data".
+
+## Domanda Aggregata
+
+Ricalcoliamo la domanda aggregata partendo dalle domande individuali come l'ultima volta,
+
+```{r compute agg_d}
+milk$Q_tot <- rowSums(milk[,2:38])
+data.frame(prezzo = milk$P, Q_tot = milk$Q_tot)
+```
+
+Grafichiamola,
+
+```{r agg_d}
+agg_milk <- ggplot(data=milk) +   # Aggregated Demand (On 45 people)
+  geom_line(aes(y = P, x= Q_tot))  + 
+  ylim(0, 7) +
+  labs(x = "Quantity", y = "Price") +
+  ggtitle("Aggregated Demand") +
+  theme_classic() 
+agg_milk
+```
+
+Ora eliminiamo le domande individuali che non ci servono più, teniamo solo prezzo e quantità aggregate, 
+```{r set table}
+milk[,2:38] <- NULL
+milk
+```
+
+## Ricavi
+
+Ora calcoliamo la curva dei ricavi, i.e. i valori di $P_i\cdot Q_i\hspace{0.2cm}\forall i$: 
+
+```{r add rev}
+milk$Revenue <- milk$P*milk$Q_tot
+milk
+```
+
+Graficamente, sappiamo che i ricavi sono l'area del quadrato sottesa alla curva di domanda data una coppia $(Q,P)$, ovvero, 
+
+```{r demand rev, warning=FALSE}
+agg_milk + geom_segment(aes(x = 0, y = 2, xend = 47, yend = 2)) +
+           geom_segment(aes(x = 47, y = 0, xend = 47, yend = 2)) +
+           annotate("text", x = 23, y = 1, label = "Revenue = PxQ") +
+           scale_x_continuous(expand = c(0, 0)) + scale_y_continuous(expand = c(0, 0)) # technical stuff
+```
+
+Possiamo anche visualizzare rappresentare i ricavi in funzione del prezzo, 
+
+```{r revenue, warning=FALSE}
+rev_milk <- ggplot(data=milk) +   # Aggregated Demand (On 45 people)
+  geom_line(aes(y = Revenue, x= P))  + 
+  ylim(0, 200) +
+  labs(x = "Price", y = "Revenue") +
+  ggtitle("Revenue Curve") +
+  theme_classic() 
+rev_milk
+```
+
+Oppure in funzione sia del prezzo che della quantità,
+
+```{r 3d graph, warning=FALSE}
+rev_milk3D <- scatter3D(x = milk$Q_tot, y = milk$P, z = milk$Revenue, phi = 0, bty = "g", type = "h", pch = 20, cex = 2, ticktype = "detailed", xlab = "quantity", ylab = "price", zlab = "revenue", main = "Revenue")
+rev_milk3D
+```
+
+## Elasticità
+
+Ora possiamo calcolare le elasticità. Perchè è importante? L'elasticità è una misura che ci permette di capire come le variazioni di prezzo influenzano le variazioni di quantità venduta. Dunque se varia il prezzo varia la quantità, e di conseguenza variano i ricavi (che sono una funzione di prezzo e quantità!): Se ad un economista aziendale viene chiesto dal maager "Pensi che sia una buona idea aumentare il prezzo del prodotto?" l'economista può calcolare la domanda aggregata del mercato, calcolarne l'elasticità e verificare se un aumento del prezzo si trasformerà in un aumento o perdita dei ricavi, e di conseguenza fornire una consulenza informata. 
+
+### Elasticità della Domanda
+
+Ora, come sappiamo l'elasticità della domanda è data da, 
+$$
+E_D=\frac{\frac{\Delta Q}{Q}}{\frac{\Delta P}{P}}=\frac{\Delta Q}{\Delta P}\cdot \frac{P}{Q}=\frac{1}{m}\cdot \frac{P}{Q}<0
+$$
+Dove $m$ è il coefficiente angolare della domanda (se lineare) o della retta tangente nel punto (se la domanda è non lineare). Come sapete $E_D\in\{-\infty,0\}$ in quanto $m_D\leq 0$ e $P/Q\geq 0$ $\forall m,P,Q$.
+
+Prendiamo la nostra domanda aggregata (non lineare),
+```{r graph slopes, warning=FALSE}
+agg_milk + geom_segment(aes(x = 5, y = 5.5, xend = 35, yend = 2, color = "m_1")) +
+           geom_segment(aes(x = 80, y = 0.78, xend = 130, yend = 0.25, color = "m_2"))
+```
+
+Come vedete, il coefficiente della retta tangente in ogni punto ($m_D$) è diverso, questo fa cambiare valore all'elasticità per ogni punto, inoltre in ogni punto cambia il valore di $P/Q$. Infine, come sappiamo 
+
+Calcoliamo l'elasticità se il prezzo scende (dem_elast_down) e se il prezzo sale (elasticity_up) e aggiungiamola al nostro set di dati, 
+
+```{r elasticities}
+# Initialize vectors
+milk$dem_elast_down <- NA
+milk$dem_elast_up   <- NA
+
+# For loops
+for (i in 1:4) {
+  milk$dem_elast_down[i+1] <-(milk$Q_tot[i+1]-milk$Q_tot[i])/(milk$P[i+1]-milk$P[i])*milk$P[i]/milk$Q_tot[i]
+}
+
+for (i in 5:2) {
+  milk$dem_elast_up[i-1] <-(milk$Q_tot[i-1]-milk$Q_tot[i])/(milk$P[i-1]-milk$P[i])*milk$P[i]/milk$Q_tot[i]
+}
+milk
+```
+
+Come vedete abbiamo due elasticità, diverse per ogni punto perchè $m_D$ cambia e diverse elasticità per aumenti o diminuzioni di prezzo. Per ovviare al problema di avere diverse elasticità a seconda di aumenti o diminuzioni di prezzo possiamo calcolare l'elasticità usando la fomula del punto medio, 
+
+$$
+E_D^m=\frac{\frac{\Delta Q}{\overline{Q}}}{\frac{\Delta P}{\overline{P}}}=\frac{\Delta Q}{\Delta P}\cdot \frac{\overline{P}}{\overline{Q}}=\frac{1}{m_D}\cdot\frac{\overline{P}}{\overline{Q}}
+$$
+dove $\overline{P}=(P_1+P_2)/2$ e $\overline{Q}=(Q_1+Q_2)/2$. Ora aggiungiamo l'elasticità al nostro dataset (dem_elst_mean), 
+
+```{r demand mean elasticity}
+# Initialize vector
+milk$dem_elst_mean <- NA
+
+# For loop
+for (i in 1:4) {
+  milk$dem_elst_mean[i+1] <- (milk$Q_tot[i+1]-milk$Q_tot[i])/(milk$P[i+1]-milk$P[i])*(milk$P[i+1]+milk$P[i])/(milk$Q_tot[i+1]+milk$Q_tot[i])
+}
+milk
+
+```
+
+Come vedete avremo sempre un elasticità diversa a seconda del punto perchè $m_D$ cambia, ma questa misura è indipendente dalla direzione della variazione di prezzo. 
+
+### Elasticità dei Ricavi
+
+Ora possiamo calcolare l'elasticità dei ricavi. Come prima, l'elasticità dei ricavi al prezzo è sempre definita come, 
+$$
+E_R=\frac{\frac{\Delta R}{R}}{\frac{\Delta P}{P}}=\frac{\Delta R}{\Delta P}\cdot \frac{R}{Q}=m\cdot \frac{R}{Q}
+$$
+dove $m_R=\Delta R/\Delta P$ è il coefficiente angolare della retta tangente alla curva dei ricavi. Notate che risente anch'essa del problema del cambiamento del coefficiente angolare in ogni punto e dagli aumenti/diminuzioni di prezzo. Una differenza che possiamo notare rispetto ad $E_D$ è che $E_R$ non è definita solo nell'insieme dei numeri negativi poichè $m_R\in{-\infty,+\infty}$ mentre $m_D\in{-infty,0}$. Ciò si può notare anche dalla relazione che avete derivato in classe con il professore, 
+
+$$
+E_R=1-|E_D|\hspace{0.2cm}\begin{cases}\leq 0 & \text{if} & |E_D|\geq1 \\
+>0 & \text{if} & |E_D|<1\end{cases}
+$$
+
+Lascio a voi il calcolo dell'elasticità dei ricavi per aumenti/diminuzioni di prezzo usando questa formula ridotta. Calcoliamo invece l'elasticità del punto medio come, 
+
+$$
+E_D^m=\frac{\frac{\Delta R}{\overline{R}}}{\frac{\Delta P}{\overline{P}}}=\frac{\Delta R}{\Delta P}\cdot \frac{\overline{P}}{\overline{R}}=m_R\cdot\frac{\overline{P}}{\overline{R}}
+$$
+dove $\overline{P}=(P_1+P_2)/2$ e $\overline{R}=(R_1+R_2)/2$, quindi, 
+
+```{r rev mean elasticity}
+# Initialize vector
+milk$rev_elst_mean <- NA
+
+# For loop
+for (i in 1:4) {
+  milk$rev_elst_mean[i+1] <- (milk$Revenue[i+1]-milk$Revenue[i])/(milk$P[i+1]-milk$P[i])*(milk$P[i+1]+milk$P[i])/(milk$Revenue[i+1]+milk$Revenue[i])
+}
+milk
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
